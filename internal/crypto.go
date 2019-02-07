@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/wal-g/wal-g/internal/tracelog"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
@@ -30,7 +31,59 @@ func GetKeyRingId() string {
 	return getSettingValue("WALE_GPG_KEY_ID")
 }
 
-const GpgBin = "gpg"
+// GetGpgBinPath searching for gpg or gpg2 utils and returning binary location
+func GetGpgBinPath() string {
+	gpgBinPath := getSettingValue("GPG_BIN_PATH")
+	if gpgBinPath != "" {
+		return gpgBinPath
+	}
+
+	shellPaths := strings.Split(getSettingValue("PATH"), ":")
+	for _, binPath := range shellPaths {
+		gpgPathList := []string{"gpg", "gpg2"}
+		for _, gpgPath := range gpgPathList {
+			if _, err := os.Stat(strings.TrimRight(binPath, "/") + "/" + gpgPath); !os.IsNotExist(err) {
+				gpgBinPath = strings.TrimRight(binPath, "/") + "/" + gpgPath
+				break
+			}
+		}
+	}
+
+	if gpgBinPath == "" {
+		tracelog.ErrorLogger.Printf(tracelog.GetErrorFormatter(), "Trying to use encryption, but GPG binary not found")
+	}
+
+	return gpgBinPath
+}
+
+// GetGpgBinVersion get version of given gpg binary
+func GetGpgBinVersion(gpgBin string) string {
+	out, err := exec.Command(gpgBin, "--version").Output()
+	if err != nil {
+		tracelog.ErrorLogger.Printf(tracelog.GetErrorFormatter(), "Can't get GPG version")
+		tracelog.ErrorLogger.Printf(tracelog.GetErrorFormatter(), err)
+		return ""
+	}
+
+	gpgBinVersion := ""
+	gpgText := strings.Split(string(out), "\n")
+	for _, gpgLine := range gpgText {
+		if len(gpgLine) > 12 && gpgLine[:12] == "gpg (GnuPG) " {
+			gpgBinVersion = gpgLine[12:]
+			break
+		}
+	}
+
+	if gpgBinVersion == "" {
+		tracelog.ErrorLogger.Printf(tracelog.GetErrorFormatter(), "Can't get GPG version")
+		tracelog.ErrorLogger.Printf(tracelog.GetErrorFormatter(), out)
+	}
+
+	return gpgBinVersion
+}
+
+var GpgBin = GetGpgBinPath()
+var GpgBinVersion = GetGpgBinVersion(GpgBin)
 
 // CachedKey is the data transfer object describing format of key ring cache
 type CachedKey struct {
@@ -57,6 +110,8 @@ func getPubRingArmour(keyId string) ([]byte, error) {
 		}
 	}
 
+	tracelog.InfoLogger.Printf("GPG: %v", GpgBin)
+	tracelog.InfoLogger.Printf("GPG version: %v", GpgBinVersion)
 	cmd := exec.Command(GpgBin, "-a", "--export", keyId)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

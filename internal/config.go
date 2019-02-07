@@ -34,6 +34,7 @@ var (
 		"WALG_S3_SSE_KMS_ID":           nil,
 		"WALG_GPG_KEY_ID":              nil,
 		"WALE_GPG_KEY_ID":              nil,
+		"WALG_GPG_KEY_PASSPHRASE":      nil,
 		"WALG_DELTA_MAX_STEPS":         nil,
 		"WALG_DELTA_ORIGIN":            nil,
 		"WALG_COMPRESSION_METHOD":      nil,
@@ -41,6 +42,8 @@ var (
 		"WALG_NETWORK_RATE_LIMIT":      nil,
 		"WALG_USE_WAL_DELTA":           nil,
 		"WALG_LOG_LEVEL":               nil,
+		"GPG_BIN_PATH":                 nil,
+		"PATH":                         nil,
 	}
 )
 
